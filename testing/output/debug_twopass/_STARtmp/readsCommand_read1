@@ -1,0 +1,3 @@
+exec > "./output/debug_twopass/_STARtmp/tmp.fifo.read1"
+echo FILE 0
+zcat      "/storage/downsampled/SC2300771/SC2300771_GT23-14630_GATAATACCG-TTTACGTGGT_S5_L001_R2_001.fastq.gz"

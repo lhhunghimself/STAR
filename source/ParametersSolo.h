@@ -197,6 +197,10 @@ public:
 
     bool samAttrYes;//post-processed SAM attributes: error-corrected CB and UMI
     int32 samAttrFeature;//which feature to use for error correction
+    
+    //two-pass unsorted CB/UB injection
+    string addTagsToUnsortedStr;//string parameter input
+    bool addTagsToUnsorted;//whether to add CB/UB tags to unsorted BAM via two-pass mode
 
     //processing
     uint32 redistrReadsNfiles; //numer of files to resditribute reads into

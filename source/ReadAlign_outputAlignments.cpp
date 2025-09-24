@@ -183,7 +183,17 @@ void ReadAlign::writeSAM(uint64 nTrOutSAM, Transcript **trOutSAM, Transcript *tr
             if (P.outBAMunsorted || P.outBAMcoord) {//BAM output
                 alignBAM(*(trOutSAM[iTr]), nTrOutSAM, iTr, mapGen.chrStart[trOutSAM[iTr]->Chr], (uint) -1, (uint) -1, 0, -1, NULL, P.outSAMattrOrder,outBAMoneAlign, outBAMoneAlignNbytes);
 
-                if (P.outBAMunsorted) {//unsorted
+                if (outBAMsoloTmp != NULL) {//solo tmp mode (two-pass unsorted)
+                    for (uint imate=0; imate<P.readNmates; imate++) {//output each mate //not readNends: this is alignment
+                        outBAMsoloTmp->unsortedOneAlign(outBAMoneAlign[imate], outBAMoneAlignNbytes[imate], iReadAll);
+                    };
+                    if (P.outSAMunmapped.keepPairs && P.readNmates>1 && ( !mateMapped1[0] || !mateMapped1[1] ) ) {//keep pairs && paired reads && one of the mates not mapped in this transcript //not readNends: this is alignment
+                        alignBAM(*trOutSAM[iTr], 0, 0, mapGen.chrStart[trOutSAM[iTr]->Chr], (uint) -1, (uint) -1, 0, 4, mateMapped1, P.outSAMattrOrder, outBAMoneAlign, outBAMoneAlignNbytes);
+                        for (uint imate=0; imate<P.readNmates; imate++) {//output each mate //not readNends: this is alignment
+                            outBAMsoloTmp->unsortedOneAlign(outBAMoneAlign[imate], outBAMoneAlignNbytes[imate], iReadAll);
+                        };
+                    };
+                } else if (P.outBAMunsorted && outBAMunsorted != NULL) {//regular unsorted mode
                     for (uint imate=0; imate<P.readNmates; imate++) {//output each mate //not readNends: this is alignment
                         outBAMunsorted->unsortedOneAlign(outBAMoneAlign[imate], outBAMoneAlignNbytes[imate], (imate>0 || iTr>0) ? 0 : (outBAMoneAlignNbytes[0]+outBAMoneAlignNbytes[1])*2*nTrOutWrite);
                     };
@@ -221,7 +231,9 @@ void ReadAlign::writeSAM(uint64 nTrOutSAM, Transcript **trOutSAM, Transcript *tr
             if ( P.outBAMcoord || (P.outBAMunsorted && !P.outSAMunmapped.keepPairs) ) {//BAM output
                 alignBAM(*trBestSAM, 0, 0, mapGen.chrStart[trBestSAM->Chr], (uint) -1, (uint) -1, 0, unmapType, mateMapped, P.outSAMattrOrder, outBAMoneAlign, outBAMoneAlignNbytes);
                 for (uint imate=0; imate<P.readNmates; imate++) {//alignBAM output is empty for mapped mate, but still need to scan through it //not readNends: this is alignment
-                    if (P.outBAMunsorted && !P.outSAMunmapped.keepPairs) {
+                    if (outBAMsoloTmp != NULL && !P.outSAMunmapped.keepPairs) {
+                        outBAMsoloTmp->unsortedOneAlign(outBAMoneAlign[imate], outBAMoneAlignNbytes[imate], iReadAll);
+                    } else if (P.outBAMunsorted && outBAMunsorted != NULL && !P.outSAMunmapped.keepPairs) {
                         outBAMunsorted->unsortedOneAlign(outBAMoneAlign[imate], outBAMoneAlignNbytes[imate], imate>0 ? 0 : outBAMoneAlignNbytes[0]+outBAMoneAlignNbytes[1]);
                     };
                     if (P.outBAMcoord) {//KeepPairs option does not affect for sorted BAM since we do not want multiple entries for the same unmapped read
@@ -237,7 +249,9 @@ void ReadAlign::writeSAM(uint64 nTrOutSAM, Transcript **trOutSAM, Transcript *tr
         if (P.outBAMcoord || P.outBAMunsorted || P.quant.trSAM.bamYes) {//BAM output
             alignBAM(*trBestSAM, 0, 0, mapGen.chrStart[trBestSAM->Chr], (uint) -1, (uint) -1, 0, unmapType, mateMapped, P.outSAMattrOrder, outBAMoneAlign, outBAMoneAlignNbytes);
             for (uint imate=0; imate<P.readNmates; imate++) {//output each mate //not readNends: this is alignment
-                if (P.outBAMunsorted) {
+                if (outBAMsoloTmp != NULL) {
+                    outBAMsoloTmp->unsortedOneAlign(outBAMoneAlign[imate], outBAMoneAlignNbytes[imate], iReadAll);
+                } else if (P.outBAMunsorted && outBAMunsorted != NULL) {
                     outBAMunsorted->unsortedOneAlign(outBAMoneAlign[imate], outBAMoneAlignNbytes[imate], imate>0 ? 0 : outBAMoneAlignNbytes[0]+outBAMoneAlignNbytes[1]);
                 };
                 if (P.quant.trSAM.bamYes) {

@@ -9,6 +9,7 @@
 #include "OutSJ.h"
 #include "Transcriptome.h"
 #include "BAMoutput.h"
+#include "BAMoutputSoloTmp.h"
 #include "Quantifications.h"
 #include "ChimericDetection.h"
 #include "SoloRead.h"
@@ -33,6 +34,7 @@ class ReadAlign {
 
         istream* readInStream[MAX_N_MATES];
         BAMoutput *outBAMcoord, *outBAMunsorted, *outBAMquant;//sorted by coordinate, unsorted, transcriptomic BAM structure
+        class BAMoutputSoloTmp *outBAMsoloTmp;//solo tmp writer for two-pass unsorted CB/UB injection
         fstream chunkOutChimSAM, *chunkOutChimJunction, chunkOutUnmappedReadsStream[MAX_N_MATES], chunkOutFilterBySJoutFiles[MAX_N_MATES];
         OutSJ *chunkOutSJ, *chunkOutSJ1;
 

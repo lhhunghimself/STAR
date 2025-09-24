@@ -298,6 +298,7 @@ Parameters::Parameters() {//initalize parameters info
     parArray.push_back(new ParameterInfoVector <string>   (-1, -1, "soloInputSAMattrBarcodeQual",&pSolo.samAtrrBarcodeQual));
     parArray.push_back(new ParameterInfoScalar <string>   (-1, -1, "soloCellReadStats",&pSolo.readStats.type));
     parArray.push_back(new ParameterInfoScalar <string>   (-1, -1, "soloCBtype",&pSolo.CBtype.typeString));
+    parArray.push_back(new ParameterInfoScalar <string>   (-1, -1, "soloAddTagsToUnsorted",&pSolo.addTagsToUnsortedStr));
 
     parameterInputName.push_back("Default");
     parameterInputName.push_back("Command-Line-Initial");
@@ -364,7 +365,7 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
         scanAllLines(parStreamCommandLine, 1, 2); //read only initial Command Line parameters
     };
 
-	createDirectory(outFileNamePrefix, S_IRWXU, "--outFileNamePrefix", *this); //TODO: runDirPerm is hard-coded now. Need to load it from command-line
+	createDirectory(outFileNamePrefix, runDirPerm, "--outFileNamePrefix", *this);
 
     outLogFileName=outFileNamePrefix + "Log.out";
     inOut->logMain.open(outLogFileName.c_str());
@@ -636,7 +637,8 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
                 } else {
                     outBAMfileUnsortedName=outFileNamePrefix + "Aligned.out.bam";
                 };
-                inOut->outBAMfileUnsorted = bgzf_open(outBAMfileUnsortedName.c_str(),("w"+to_string((long long) outBAMcompression)).c_str());
+                
+                // BAM opening logic moved after Solo initialization (see after pSolo.initialize)
             };
             if (outBAMcoord) {
                 if (outStd=="BAM_SortedByCoordinate") {
@@ -958,6 +960,29 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
     
     //solo
     pSolo.initialize(this);
+    
+    // Open BAM files after Solo initialization (so pSolo.addTagsToUnsorted is available)
+    if (outBAMunsorted) {
+        if (pSolo.addTagsToUnsorted) {
+            // Two-pass mode: create temp file, skip opening final BAM for now
+            outBAMfileUnsortedSoloTmpName = outFileNamePrefix + "Aligned.out.unsorted.solo.tmp";
+            inOut->logMain << "DEBUG: Opening solo tmp file: " << outBAMfileUnsortedSoloTmpName << std::endl;
+            // Open shared tmp stream once
+            inOut->outBAMfileUnsortedSoloTmp.open(outBAMfileUnsortedSoloTmpName.c_str(), ios::binary | ios::out | ios::trunc);
+            if (!inOut->outBAMfileUnsortedSoloTmp.is_open()) {
+                ostringstream errOut;
+                errOut << "EXITING because of fatal OUTPUT ERROR: could not create solo tmp file: " << outBAMfileUnsortedSoloTmpName << "\n";
+                errOut << "SOLUTION: check the path and permissions\n";
+                exitWithError(errOut.str(), std::cerr, inOut->logMain, EXIT_CODE_PARAMETER, *this);
+            }
+            inOut->logMain << "DEBUG: Solo tmp file opened successfully" << std::endl;
+            // Final BAM will be opened in pass 2
+            inOut->outBAMfileUnsorted = NULL;
+        } else {
+            // Legacy mode: open final BAM directly
+            inOut->outBAMfileUnsorted = bgzf_open(outBAMfileUnsortedName.c_str(),("w"+to_string((long long) outBAMcompression)).c_str());
+        }
+    }
     
     //clipping
     pClip.initialize(this);

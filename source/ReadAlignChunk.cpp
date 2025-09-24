@@ -40,11 +40,24 @@ ReadAlignChunk::ReadAlignChunk(Parameters& Pin, Genome &genomeIn, Transcriptome 
     };
 
     if (P.outBAMunsorted) {
-        chunkOutBAMunsorted = new BAMoutput (P.inOut->outBAMfileUnsorted, P);
-        RA->outBAMunsorted = chunkOutBAMunsorted;
+        if (P.pSolo.addTagsToUnsorted) {
+            // Two-pass mode: use solo tmp writer with shared stream
+            chunkOutBAMsoloTmp = new BAMoutputSoloTmp(&P.inOut->outBAMfileUnsortedSoloTmp, P);
+            RA->outBAMsoloTmp = chunkOutBAMsoloTmp;
+            chunkOutBAMunsorted = NULL;
+            RA->outBAMunsorted = NULL;
+        } else {
+            // Legacy mode: use regular BAM output
+            chunkOutBAMunsorted = new BAMoutput (P.inOut->outBAMfileUnsorted, P);
+            RA->outBAMunsorted = chunkOutBAMunsorted;
+            chunkOutBAMsoloTmp = NULL;
+            RA->outBAMsoloTmp = NULL;
+        }
     } else {
         chunkOutBAMunsorted=NULL;
         RA->outBAMunsorted=NULL;
+        chunkOutBAMsoloTmp=NULL;
+        RA->outBAMsoloTmp=NULL;
     };
 
     if (P.outBAMcoord) {

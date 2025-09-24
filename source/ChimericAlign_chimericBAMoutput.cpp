@@ -98,7 +98,11 @@ void ChimericAlign::chimericBAMoutput(Transcript *al1, Transcript *al2, ReadAlig
 	    free(b); // don't use bam_destroy1(), because bam_read1_fromArray does not allocate memory for b->data
         };
 
-        if (P.outBAMunsorted) RA->outBAMunsorted->unsortedOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], ii>0 ? 0 : bamBytesTotal);
+        if (P.outBAMunsorted) {
+            RA->outBAMunsorted->unsortedOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], ii>0 ? 0 : bamBytesTotal);
+        } else if (RA->outBAMsoloTmp != NULL) {
+            RA->outBAMsoloTmp->unsortedOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], RA->iReadAll);
+        };
         if (P.outBAMcoord)    RA->outBAMcoord->coordOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], (RA->iReadAll<<32) );
     };
 

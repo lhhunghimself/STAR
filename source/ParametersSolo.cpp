@@ -23,6 +23,19 @@ void ParametersSolo::initialize(Parameters *pPin)
     redistrReadsNfiles = 3*pP->runThreadN;
     
     //////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////--soloAddTagsToUnsorted
+    if (addTagsToUnsortedStr=="yes") {
+        addTagsToUnsorted = true;
+    } else if (addTagsToUnsortedStr=="no") {
+        addTagsToUnsorted = false;
+    } else {
+        ostringstream errOut;
+        errOut << "EXITING because of fatal PARAMETERS error: unrecognized option in --soloAddTagsToUnsorted="<<addTagsToUnsortedStr<<"\n";
+        errOut << "SOLUTION: use allowed option: yes OR no\n";
+        exitWithError(errOut.str(),std::cerr, pP->inOut->logMain, EXIT_CODE_PARAMETER, *pP);
+    };
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////--soloType
     barcodeStart=barcodeEnd=0; //this means that the entire barcodeRead is considered barcode. Will change it for simple barcodes.    
     yes = true;
@@ -404,10 +417,10 @@ void ParametersSolo::initialize(Parameters *pPin)
     samAttrYes=false;
     if ( (pP->outSAMattrPresent.CB || pP->outSAMattrPresent.UB) && type!=SoloTypes::CB_samTagOut) {
         samAttrYes=true;
-        if (!pP->outBAMcoord) {
+        if (!pP->outBAMcoord && !(pP->outBAMunsorted && addTagsToUnsorted)) {
             ostringstream errOut;
-            errOut << "EXITING because of fatal PARAMETERS error: CB and/or UB attributes in --outSAMattributes can only be output in the sorted BAM file.\n";
-            errOut << "SOLUTION: re-run STAR with --outSAMtype BAM SortedByCoordinate ...\n";
+            errOut << "EXITING because of fatal PARAMETERS error: CB and/or UB attributes in --outSAMattributes can only be output in the sorted BAM file or unsorted BAM with --soloAddTagsToUnsorted yes.\n";
+            errOut << "SOLUTION: re-run STAR with --outSAMtype BAM SortedByCoordinate ... OR --outSAMtype BAM Unsorted --soloAddTagsToUnsorted yes\n";
             exitWithError(errOut.str(),std::cerr, pP->inOut->logMain, EXIT_CODE_PARAMETER, *pP);
         };
     } else if ( pP->outSAMattrPresent.UB && type==SoloTypes::CB_samTagOut) {
