@@ -1,6 +1,7 @@
 #include "ChimericAlign.h"
 #include "ReadAlign.h"
 #include "BAMfunctions.h"
+#include "GlobalVariables.h"
 
 #include <vector>
 
@@ -99,9 +100,19 @@ void ChimericAlign::chimericBAMoutput(Transcript *al1, Transcript *al2, ReadAlig
         };
 
         if (P.outBAMunsorted) {
-            RA->outBAMunsorted->unsortedOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], ii>0 ? 0 : bamBytesTotal);
+            uint64_t recordIdx = (*(RA->bamRecordIndexPtr))++;
+            uint32_t mateIdx = (P.readNmates>0) ? (ii % P.readNmates) : 0;
+            const char* qnamePtr = RA->readName;
+            if (qnamePtr && qnamePtr[0] == '@') { ++qnamePtr; }
+            BAMRecordMeta meta{recordIdx, RA->iReadAll, mateIdx, (uint32_t)iTr, qnamePtr};
+            RA->outBAMunsorted->unsortedOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], ii>0 ? 0 : bamBytesTotal, meta);
         } else if (RA->outBAMsoloTmp != NULL) {
-            RA->outBAMsoloTmp->unsortedOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], RA->iReadAll);
+            uint64_t recordIdx = (*(RA->bamRecordIndexPtr))++;
+            uint32_t mateIdx = (P.readNmates>0) ? (ii % P.readNmates) : 0;
+            const char* qnamePtr = RA->readName;
+            if (qnamePtr && qnamePtr[0] == '@') { ++qnamePtr; }
+            BAMRecordMeta meta{recordIdx, RA->iReadAll, mateIdx, (uint32_t)iTr, qnamePtr};
+            RA->outBAMsoloTmp->unsortedOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], RA->iReadAll, meta);
         };
         if (P.outBAMcoord)    RA->outBAMcoord->coordOneAlign(RA->outBAMoneAlign[ii], RA->outBAMoneAlignNbytes[ii], (RA->iReadAll<<32) );
     };

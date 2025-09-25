@@ -299,6 +299,7 @@ Parameters::Parameters() {//initalize parameters info
     parArray.push_back(new ParameterInfoScalar <string>   (-1, -1, "soloCellReadStats",&pSolo.readStats.type));
     parArray.push_back(new ParameterInfoScalar <string>   (-1, -1, "soloCBtype",&pSolo.CBtype.typeString));
     parArray.push_back(new ParameterInfoScalar <string>   (-1, -1, "soloAddTagsToUnsorted",&pSolo.addTagsToUnsortedStr));
+    parArray.push_back(new ParameterInfoScalar <string>   (-1, -1, "soloWriteTagTable",&pSolo.writeTagTableStr));
 
     parameterInputName.push_back("Default");
     parameterInputName.push_back("Command-Line-Initial");
@@ -476,6 +477,7 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
 
 ////////////////////////////////////////////////////// Calculate and check parameters
     iReadAll=0;
+    g_bamRecordIndex = 0;
     
     pGe.initialize(this);
 

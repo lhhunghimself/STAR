@@ -23,7 +23,7 @@ Required arguments:
   --output-base     Parent directory for STAR output
 
 Optional arguments:
-  --docker-image    Docker image to run (default: biodepot/docker_fork:latest)
+  --docker-image    Docker image to run (default: biodepot/star_fork:latest)
   --star-cmd        STAR executable name (default: STAR_fork)
   --local           Run locally instead of via Docker
   -h, --help        Show this help message and exit
@@ -36,8 +36,8 @@ USAGE
 }
 
 USE_DOCKER=1
-DOCKER_IMAGE="biodepot/docker_fork:latest"
-STAR_CMD_NAME="STAR_fork"
+DOCKER_IMAGE="biodepot/star_fork:latest"
+STAR_CMD_NAME="STAR"
 declare -A EXTRA_FLAGS=()
 
 if [[ $# -eq 0 ]]; then
@@ -185,13 +185,21 @@ fi
 declare -a R1_LIST=()
 declare -a R2_LIST=()
 shopt -s nullglob
-for lane in L001 L002 L003 L004 L005 L006 L007 L008; do
-    for file in "${BASE_DIR}/${SAMPLE_ID}"_*_"${lane}"_R2_001.fastq.gz; do
-        R2_LIST+=("$file")
-    done
-    for file in "${BASE_DIR}/${SAMPLE_ID}"_*_"${lane}"_R1_001.fastq.gz; do
-        R1_LIST+=("$file")
-    done
+# Find all R2 files matching the pattern
+while IFS= read -r -d '' file; do
+    R2_LIST+=("$file")
+done < <(find "${BASE_DIR}" -name "${SAMPLE_ID}_*_R2_001.fastq.gz" -print0)
+
+# Create R1_LIST by converting R2 filenames to R1 and checking existence
+for r2_file in "${R2_LIST[@]}"; do
+    r1_file="${r2_file/_R2_/_R1_}"
+    if [[ -f "$r1_file" ]]; then
+        R1_LIST+=("$r1_file")
+    else
+        echo "WARNING: Corresponding R1 file not found for $r2_file" >&2
+        #exit if the R1 file is not found
+        exit 1
+    fi
 done
 shopt -u nullglob
 
@@ -241,7 +249,7 @@ COMMON_PARAMS=(
     --outSAMprimaryFlag AllBestScore
     --outFilterScoreMin 0
     --outFilterScoreMinOverLread 0
-    --outSAMattributes NH HI AS nM NM CB UB CR CY UR UY GX GN
+    --outSAMattributes NH HI AS nM NM CR CY UR UY GX GN
     --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts
     --soloUMIfiltering MultiGeneUMI_CR
     --soloUMIdedup 1MM_CR
@@ -253,10 +261,11 @@ COMMON_PARAMS=(
     --readFilesCommand zcat
 )
 
-NEW_UNSORTED_TAGS_PARAMS=(
+
+NEW_TAG_TABLE_PARAMS=(
     "${COMMON_PARAMS[@]}"
     --outSAMtype BAM Unsorted
-    --soloAddTagsToUnsorted yes
+    --soloWriteTagTable Default
 )
 
 # Process extra flags
@@ -269,16 +278,16 @@ if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
     
     # First pass: copy existing parameters and mark which flags we've seen
     i=0
-    while [[ $i -lt ${#NEW_UNSORTED_TAGS_PARAMS[@]} ]]; do
-        param="${NEW_UNSORTED_TAGS_PARAMS[$i]}"
+    while [[ $i -lt ${#NEW_TAG_TABLE_PARAMS[@]} ]]; do
+        param="${NEW_TAG_TABLE_PARAMS[$i]}"
         if [[ "$param" =~ ^-- ]]; then
             # This is a flag
             if [[ -n "${EXTRA_FLAGS[$param]:-}" ]]; then
                 # We have a replacement for this flag
                 extra_values="${EXTRA_FLAGS[$param]}"
-                if [[ $((i+1)) -lt ${#NEW_UNSORTED_TAGS_PARAMS[@]} && ! "${NEW_UNSORTED_TAGS_PARAMS[$((i+1))]}" =~ ^-- ]]; then
+                if [[ $((i+1)) -lt ${#NEW_TAG_TABLE_PARAMS[@]} && ! "${NEW_TAG_TABLE_PARAMS[$((i+1))]}" =~ ^-- ]]; then
                     # Original has a value, check if it's the same
-                    original_value="${NEW_UNSORTED_TAGS_PARAMS[$((i+1))]}"
+                    original_value="${NEW_TAG_TABLE_PARAMS[$((i+1))]}"
                     if [[ "$extra_values" == "$original_value" ]]; then
                         echo "Flag $param: identical value '$extra_values', keeping original"
                         FINAL_PARAMS+=("$param" "$original_value")
@@ -307,8 +316,8 @@ if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
             else
                 # Keep original parameter
                 FINAL_PARAMS+=("$param")
-                if [[ $((i+1)) -lt ${#NEW_UNSORTED_TAGS_PARAMS[@]} && ! "${NEW_UNSORTED_TAGS_PARAMS[$((i+1))]}" =~ ^-- ]]; then
-                    FINAL_PARAMS+=("${NEW_UNSORTED_TAGS_PARAMS[$((i+1))]}")
+                if [[ $((i+1)) -lt ${#NEW_TAG_TABLE_PARAMS[@]} && ! "${NEW_TAG_TABLE_PARAMS[$((i+1))]}" =~ ^-- ]]; then
+                    FINAL_PARAMS+=("${NEW_TAG_TABLE_PARAMS[$((i+1))]}")
                     i=$((i+2))
                 else
                     i=$((i+1))
@@ -333,7 +342,7 @@ if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
         fi
     done
     
-    NEW_UNSORTED_TAGS_PARAMS=("${FINAL_PARAMS[@]}")
+    NEW_TAG_TABLE_PARAMS=("${FINAL_PARAMS[@]}")
 fi
 
 cleanup_dir "$NEW_DIR"
@@ -361,15 +370,16 @@ if (( USE_DOCKER )); then
     for path in "${!MOUNT_MODES[@]}"; do
         DOCKER_CMD+=(-v "$path:$path:${MOUNT_MODES[$path]}")
     done
-    DOCKER_CMD+=("$DOCKER_IMAGE" "$STAR_CMD_NAME")
-
+    DOCKER_CMD+=("$DOCKER_IMAGE" /bin/bash -c)
+    DOCKER_CMD+=("rm -rf $TEMP_DIR && $STAR_CMD_NAME \"\$@\"" --)
+    echo "${DOCKER_CMD[@]}"
     "${DOCKER_CMD[@]}" \
-        "${NEW_UNSORTED_TAGS_PARAMS[@]}" \
+        "${NEW_TAG_TABLE_PARAMS[@]}" \
         --outFileNamePrefix "${NEW_DIR}/"
 else
     echo "=== Running STAR locally with ${STAR_CMD_NAME} ==="
     "$STAR_CMD_NAME" \
-        "${NEW_UNSORTED_TAGS_PARAMS[@]}" \
+        "${NEW_TAG_TABLE_PARAMS[@]}" \
         --outFileNamePrefix "${NEW_DIR}/"
 fi
 

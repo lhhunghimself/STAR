@@ -10,23 +10,32 @@ Pass 1 (mapping threads)
   ├── If --soloAddTagsToUnsorted yes:
   │     └── BAMoutputSoloTmp::unsortedOneAlign()
   │            writes [uint32 size][payload][uint64 trailer] to a shared tmp file
+  ├── If --soloWriteTagTable enabled:
+  │     └── Standard BAMoutput (no temp file needed)
   └── Solo processes reads (unchanged)
 
 Pass 2 (single-threaded post-processing)
-  └── BAMunsortedAddSoloTags()
-        ▸ sequentially replays tmp file
-        ▸ appends corrected CB/UB via SoloFeature::addBAMtags()
-        ▸ writes final Aligned.out.bam (unsorted) and deletes tmp file
+  ├── If --soloAddTagsToUnsorted yes:
+  │     └── BAMunsortedAddSoloTags()
+  │           ▸ sequentially replays tmp file
+  │           ▸ appends corrected CB/UB via SoloFeature::addBAMtags()
+  │           ▸ writes final Aligned.out.bam (unsorted) and deletes tmp file
+  └── If --soloWriteTagTable enabled:
+        └── SoloFeature::writeTagTableIfRequested()
+              ▸ exports CB/UB assignments to sidecar TSV file
+              ▸ maintains strict alignment with BAM record order
 ```
 
 ## Key Modules
 
 ### 1. Parameter Handling (`source/Parameters*.{h,cpp}`)
 - Added `ParametersSolo::{addTagsToUnsortedStr, addTagsToUnsorted}` with yes/no validation.
-- Hooked the new CLI flag in `Parameters.cpp` and `parametersDefault` (default `no`).
+- Added `ParametersSolo::{writeTagTableStr, writeTagTableEnabled, writeTagTablePath}` for tag table export.
+- Hooked the new CLI flags in `Parameters.cpp` and `parametersDefault`.
 - After `pSolo.initialize(this)` runs, the unsorted BAM code path decides between:
   - opening the traditional BGZF stream (`outBAMfileUnsorted`), or
   - opening a shared `ofstream` for the solo tmp (`outBAMfileUnsortedSoloTmp`).
+- Tag table mode bypasses the temp BAM entirely unless `--soloAddTagsToUnsorted` is also enabled.
 
 ### 2. Pass-1 Capture (`source/BAMoutputSoloTmp.{h,cpp}`)
 - New lightweight writer that accepts a BAM record plus `iReadAll`, buffering output with mutex protection.
@@ -49,6 +58,14 @@ Pass 2 (single-threaded post-processing)
 ### 5. ReadAlign Changes
 - `ReadAlign` now carries an `outBAMsoloTmp` pointer.
 - All unsorted write sites (mapped, unmapped, chimeric) branch to the solo tmp writer when present.
+
+### 5. Tag Table Export (`source/SoloFeature_writeTagTable.cpp`)
+- New method `SoloFeature::writeTagTableIfRequested()` exports CB/UB assignments to a sidecar TSV file.
+- Called after `collapseUMIall()` completes but before `outputResults()` in `SoloFeature::processRecords()`.
+- Only runs when `writeTagTableEnabled` is true and `featureType == samAttrFeature` (usually Gene).
+- Outputs tab-separated columns: `bam_record_index`, `iReadAll`, `mate`, `align_idx`, `qname`, `CB`, `UB`, `status`.
+- Uses existing `readInfo` structure and `cbWLstr`/`convertNuclInt64toString` for CB/UMI string conversion.
+- Memory-efficient: clears `readNames` vector after export to reduce peak RAM usage.
 
 ## Testing Additions
 - `testing/scripts/10_run_sorted_baseline.sh`: runs the canonical sorted pipeline for comparison.

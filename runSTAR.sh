@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Run STAR with CB/UB tag injection
+# Run STAR with CB/UB tag table export
 # Based on production parameters from SC2300771
 
 set -euo pipefail
@@ -12,14 +12,14 @@ BASE_DIR="/storage/JAX_sequences/${SAMPLE_ID}"
 WHITELIST="/storage/scRNAseq_output/whitelists/737K-fixed-rna-profiling.txt"
 GENOME_DIR="/storage/scRNAseq_output/indices-98-32/star"
 THREADS=24
-OUTPUT_BASE="/mnt/pikachu/forked/Alignments"
+OUTPUT_BASE="/storage/Alignments"
 
 NEW_DIR="${OUTPUT_BASE}/${SAMPLE_ID}"
 TEMP_DIR="/storage/tmp/${SAMPLE_ID}"
 
 #clean up the temp directory
 rm -rf $TEMP_DIR
-mkdir -p $TEMP_DIR
+
 
 # Set ulimit for STAR
 ulimit -n 100000 || true
@@ -76,19 +76,19 @@ COMMON_PARAMS=(
     --soloMultiMappers Unique
     --alignIntronMax 1
     --alignMatesGapMax 0
-    --outFilterMismatchNmax 10
+    --outFilterMismatchNmax 6
     --outFilterMismatchNoverReadLmax 1.0
-    --outFilterMatchNmin 16
+    --outFilterMatchNmin 25
     --outSAMunmapped None
     --outFilterMatchNminOverLread 0
     --outFilterMultimapNmax 10000
-    --outFilterMultimapScoreRange 1000
+    --outFilterMultimapScoreRange 1
     --outSAMmultNmax 10000
     --winAnchorMultimapNmax 200
     --outSAMprimaryFlag AllBestScore
     --outFilterScoreMin 0
     --outFilterScoreMinOverLread 0
-    --outSAMattributes NH HI AS nM NM CB UB CR CY UR UY GX GN
+    --outSAMattributes NH HI AS nM NM CR CY UR UY GX GN
     --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts
     --soloUMIfiltering MultiGeneUMI_CR
     --soloUMIdedup 1MM_CR
@@ -100,18 +100,18 @@ COMMON_PARAMS=(
     --readFilesCommand zcat
 )
 
-NEW_UNSORTED_TAGS_PARAMS=(
+NEW_TAG_TABLE_PARAMS=(
     "${COMMON_PARAMS[@]}"
     --outSAMtype BAM Unsorted
-    --soloAddTagsToUnsorted yes
+    --soloWriteTagTable Default
 )
 
-# Run new STAR with tags
+# Run new STAR with tag table export
 cleanup_dir "$NEW_DIR"
 
-echo "=== Running new STAR with CB/UB tags ==="
+echo "=== Running new STAR with CB/UB tag table export ==="
 $NEW_STAR_BINARY \
-    "${NEW_UNSORTED_TAGS_PARAMS[@]}" \
+    "${NEW_TAG_TABLE_PARAMS[@]}" \
     --outFileNamePrefix "${NEW_DIR}/"
 
 echo "Run finished"

@@ -450,6 +450,120 @@ else
     TEST3_PASS=false
 fi
 
+# ============================================================================
+# Test 4: Tag Table Export Feature
+# ============================================================================
+
+echo ""
+echo "=== Test 4: New STAR - Tag table export with --soloWriteTagTable ==="
+
+cleanup_dir "${OUTPUT_BASE}/tag_table_test"
+
+"$NEW_STAR_BINARY" \
+    --runThreadN $THREADS \
+    --genomeDir "$GENOME_DIR" \
+    --readFilesIn "${BASE_DIR}/R1.fastq.gz" "${BASE_DIR}/R2.fastq.gz" \
+    --readFilesCommand zcat \
+    --outFileNamePrefix "${OUTPUT_BASE}/tag_table_test/" \
+    --soloType CB_UMI_Simple \
+    --soloCBstart 1 --soloCBlen 16 \
+    --soloUMIstart 17 --soloUMIlen 12 \
+    --soloCBwhitelist "$WHITELIST" \
+    --outSAMtype BAM Unsorted \
+    --soloWriteTagTable Default \
+    --outSAMattributes NH HI nM AS CR UR GX GN sS sQ sM \
+    --soloFeatures Gene
+
+echo ""
+echo "=== Test 4 Results ==="
+
+# Check if tag table file exists
+TAG_TABLE_FILE="${OUTPUT_BASE}/tag_table_test/Aligned.out.cb_ub.tsv"
+if [[ -f "$TAG_TABLE_FILE" ]]; then
+    echo "✓ Tag table file exists: $TAG_TABLE_FILE"
+    TEST4_FILE_EXISTS=true
+else
+    echo "✗ Tag table file missing: $TAG_TABLE_FILE"
+    TEST4_FILE_EXISTS=false
+fi
+
+# Check if tag table has expected format and content
+if [[ "$TEST4_FILE_EXISTS" == true ]]; then
+    # Count header line
+    HEADER_COUNT=$(head -1 "$TAG_TABLE_FILE" | grep -c "bam_record_index.*iReadAll.*mate.*align_idx.*qname.*CB.*UB.*status" || echo "0")
+    if [[ "$HEADER_COUNT" -eq 1 ]]; then
+        echo "✓ Tag table has correct header format"
+        TEST4_HEADER_OK=true
+    else
+        echo "✗ Tag table header format is incorrect"
+        echo "Expected: # bam_record_index	iReadAll	mate	align_idx	qname	CB	UB	status"
+        echo "Found: $(head -1 "$TAG_TABLE_FILE")"
+        TEST4_HEADER_OK=false
+    fi
+    
+    # Count data lines (excluding header)
+    DATA_LINES=$(tail -n +2 "$TAG_TABLE_FILE" | wc -l)
+    if [[ "$DATA_LINES" -gt 0 ]]; then
+        echo "✓ Tag table contains $DATA_LINES data records"
+        TEST4_HAS_DATA=true
+        
+        # Check if CB and UB columns have valid values
+        CB_VALUES=$(tail -n +2 "$TAG_TABLE_FILE" | cut -f6 | grep -v "^-$" | head -10 | wc -l)
+        UB_VALUES=$(tail -n +2 "$TAG_TABLE_FILE" | cut -f7 | grep -v "^-$" | head -10 | wc -l)
+        if [[ "$CB_VALUES" -gt 0 && "$UB_VALUES" -gt 0 ]]; then
+            echo "✓ Tag table contains valid CB and UB values"
+            TEST4_VALID_DATA=true
+        else
+            echo "✗ Tag table lacks valid CB/UB values in first 10 records"
+            TEST4_VALID_DATA=false
+        fi
+    else
+        echo "✗ Tag table is empty (no data records)"
+        TEST4_HAS_DATA=false
+        TEST4_VALID_DATA=false
+    fi
+else
+    TEST4_HEADER_OK=false
+    TEST4_HAS_DATA=false
+    TEST4_VALID_DATA=false
+fi
+
+# Verify unsorted BAM was created without CB/UB tags (since we didn't enable --soloAddTagsToUnsorted)
+UNSORTED_BAM="${OUTPUT_BASE}/tag_table_test/Aligned.out.bam"
+if [[ -f "$UNSORTED_BAM" ]]; then
+    # Check if BAM has CB/UB tags (should not have them in tag table mode without --soloAddTagsToUnsorted)
+    CB_TAG_COUNT=$(samtools view "$UNSORTED_BAM" | head -100 | grep -c "CB:Z:" || echo "0")
+    if [[ "$CB_TAG_COUNT" -eq 0 ]]; then
+        echo "✓ Unsorted BAM correctly lacks CB/UB tags (as expected in tag table mode)"
+        TEST4_BAM_NO_TAGS=true
+    else
+        echo "✗ Unsorted BAM unexpectedly contains CB tags"
+        TEST4_BAM_NO_TAGS=false
+    fi
+else
+    echo "✗ Unsorted BAM file missing"
+    TEST4_BAM_NO_TAGS=false
+fi
+
+# Compare Solo matrices with previous runs (should be identical)
+if compare_solo_dirs "${OUTPUT_BASE}/original_sorted/Solo.out" "${OUTPUT_BASE}/tag_table_test/Solo.out"; then
+    echo "✓ Test 4 Solo comparison PASSED"
+    TEST4_SOLO_PASS=true
+else
+    echo "✗ Test 4 Solo comparison FAILED"
+    TEST4_SOLO_PASS=false
+fi
+
+if [[ "$TEST4_FILE_EXISTS" == true && "$TEST4_HEADER_OK" == true && "$TEST4_HAS_DATA" == true && "$TEST4_VALID_DATA" == true && "$TEST4_BAM_NO_TAGS" == true && "$TEST4_SOLO_PASS" == true ]]; then
+    echo ""
+    echo "🎉 TEST 4 OVERALL: PASSED - Tag table export feature working correctly"
+    TEST4_PASS=true
+else
+    echo ""
+    echo "❌ TEST 4 OVERALL: FAILED - Tag table export feature has issues"
+    TEST4_PASS=false
+fi
+
 echo ""
 echo "============================================================================="
 echo "FINAL SUMMARY"
@@ -457,16 +571,18 @@ echo "==========================================================================
 echo "Test 1 (sorted mode comparison): $([ "$TEST1_PASS" == true ] && echo "PASSED ✓" || echo "FAILED ✗")"
 echo "Test 2 (unsorted mode comparison): $([ "$TEST2_PASS" == true ] && echo "PASSED ✓" || echo "FAILED ✗")"
 echo "Test 3 (new feature validation): $([ "$TEST3_PASS" == true ] && echo "PASSED ✓" || echo "FAILED ✗")"
+echo "Test 4 (tag table export): $([ "$TEST4_PASS" == true ] && echo "PASSED ✓" || echo "FAILED ✗")"
 
-if [[ "$TEST1_PASS" == true && "$TEST2_PASS" == true && "$TEST3_PASS" == true ]]; then
+if [[ "$TEST1_PASS" == true && "$TEST2_PASS" == true && "$TEST3_PASS" == true && "$TEST4_PASS" == true ]]; then
     echo ""
-    echo "🎉 ALL TESTS PASSED! The new two-pass unsorted CB/UB tag injection feature is working correctly."
+    echo "🎉 ALL TESTS PASSED! The new STARsolo features are working correctly."
     echo ""
     echo "Key findings:"
     echo "- New STAR binary produces identical results to original in both sorted and unsorted modes"
     echo "- New --soloAddTagsToUnsorted feature successfully adds CB/UB tags to unsorted BAM"
+    echo "- New --soloWriteTagTable feature successfully exports CB/UB assignments to sidecar table"
     echo "- Solo count matrices are identical across all methods"
-    echo "- New method produces smaller BAM files (unsorted vs sorted)"
+    echo "- New methods produce smaller BAM files (unsorted vs sorted)"
     exit 0
 else
     echo ""

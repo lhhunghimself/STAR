@@ -1,10 +1,11 @@
 #include "BAMoutputSoloTmp.h"
+#include "BAMTagBuffer.h"
 #include "GlobalVariables.h"
 #include "ErrorWarning.h"
 #include <cstring>
 
 BAMoutputSoloTmp::BAMoutputSoloTmp(ofstream* tmpStreamIn, Parameters &Pin) 
-    : tmpStream(tmpStreamIn), P(Pin) {
+    : tmpStream(tmpStreamIn), P(Pin), tagBuffer(nullptr) {
     
     bufferSize = defaultBufferSize;
     buffer = new char[bufferSize];
@@ -14,6 +15,24 @@ BAMoutputSoloTmp::BAMoutputSoloTmp(ofstream* tmpStreamIn, Parameters &Pin)
         ostringstream errOut;
         errOut << "EXITING because of FATAL ERROR: BAMoutputSoloTmp could not initialize with closed stream\n";
         errOut << "DEBUG: tmpStream=" << (tmpStream ? "not null" : "null") << "\n";
+        if (tmpStream) {
+            errOut << "DEBUG: tmpStream->is_open()=" << (tmpStream->is_open() ? "true" : "false") << "\n";
+            errOut << "DEBUG: tmpStream->good()=" << (tmpStream->good() ? "true" : "false") << "\n";
+        }
+        exitWithError(errOut.str(), std::cerr, P.inOut->logMain, EXIT_CODE_PARAMETER, P);
+    }
+}
+
+BAMoutputSoloTmp::BAMoutputSoloTmp(ofstream* tmpStreamIn, Parameters &Pin, BAMTagBuffer* tagBufferIn) 
+    : tmpStream(tmpStreamIn), P(Pin), tagBuffer(tagBufferIn) {
+    
+    bufferSize = defaultBufferSize;
+    buffer = new char[bufferSize];
+    bufferUsed = 0;
+    
+    if (!tmpStream || !tmpStream->is_open()) {
+        ostringstream errOut;
+        errOut << "EXITING because of fatal PARAMETERS error: BAMoutputSoloTmp tmpStream is not open\n";
         if (tmpStream) {
             errOut << "DEBUG: tmpStream->is_open()=" << (tmpStream->is_open() ? "true" : "false") << "\n";
             errOut << "DEBUG: tmpStream->good()=" << (tmpStream->good() ? "true" : "false") << "\n";
@@ -85,6 +104,16 @@ void BAMoutputSoloTmp::unsortedOneAlign(char *bamIn, uint bamSize, uint iReadAll
     memcpy(writePos, &trailer, sizeof(uint64));
     
     bufferUsed += totalSize;
+}
+
+void BAMoutputSoloTmp::unsortedOneAlign(char *bamIn, uint bamSize, uint iReadAll, const BAMRecordMeta& meta) {
+    // Store metadata in tag buffer if available
+    if (tagBuffer) {
+        tagBuffer->append(meta);
+    }
+    
+    // Delegate to the original method for BAM output
+    unsortedOneAlign(bamIn, bamSize, iReadAll);
 }
 
 void BAMoutputSoloTmp::flush() {

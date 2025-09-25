@@ -26,3 +26,4 @@ testing/
 integration_test_output/
 testing/
 tag_test_output/
+emit_test_output/
