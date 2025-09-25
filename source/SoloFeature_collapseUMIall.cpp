@@ -30,7 +30,6 @@ void SoloFeature::collapseUMIall()
     
     // After all CB/UB values are finalized, update the BAMTagBuffer if tag table export is enabled
     if (pSolo.writeTagTableEnabled && pSolo.bamTagBuffer && readInfo.size() > 0) {
-        pSolo.bamTagBuffer->reserveReadCapacity(readInfo.size());
         finalizeTagTableFromReadInfo();
     }
 };

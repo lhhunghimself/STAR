@@ -7,18 +7,19 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <cstdint>
 
 struct BAMTagEntry {
     uint64_t recordIndex;
-    uint64_t iReadAll;
-    uint32_t mate;
-    uint32_t alignIdx;
-    uint32_t groupIndex;     // Index into readGroups array
+    uint32_t readId;    // replaces iReadAll, stores iReadAll cast to 32-bit
+    uint16_t alignIdx;
+    uint8_t  mate;
+    uint8_t  padding;   // for alignment, set to 0
     
-    BAMTagEntry() : recordIndex(0), iReadAll(0), mate(0), alignIdx(0), groupIndex(UINT32_MAX) {}
+    BAMTagEntry() : recordIndex(0), readId(0), alignIdx(0), mate(0), padding(0) {}
     BAMTagEntry(const BAMRecordMeta& meta) 
-        : recordIndex(meta.recordIndex), iReadAll(meta.iReadAll), mate(meta.mate), alignIdx(meta.alignIdx)
-        , groupIndex(UINT32_MAX) {}
+        : recordIndex(meta.recordIndex), readId(static_cast<uint32_t>(meta.iReadAll))
+        , alignIdx(static_cast<uint16_t>(meta.alignIdx)), mate(static_cast<uint8_t>(meta.mate)), padding(0) {}
 };
 
 class BAMTagBuffer {
@@ -28,9 +29,6 @@ public:
     
     // Thread-safe append of alignment metadata
     void append(const BAMRecordMeta& meta);
-    
-    // Hint expected number of reads to pre-size buckets
-    void reserveReadCapacity(uint64_t nReads);
     
     // Write tag table to file (called at end of processing)
     void writeTagTable(const std::string& outputPath,
@@ -45,18 +43,7 @@ public:
     size_t size() const { return entries.size(); }
 
 private:
-    // ReadGroup structure for minimal shared data across alignments of the same read
-    struct ReadGroup {
-        uint32_t firstEntryIdx;  // index into entries, UINT32_MAX when unused
-        uint32_t entryCount;     // number of alignments for this read
-        
-        ReadGroup() : firstEntryIdx(UINT32_MAX), entryCount(0) {}
-    };
-    
-    uint32_t getOrCreateGroup(uint64_t iReadAll);
-
     std::vector<BAMTagEntry> entries;
-    std::vector<ReadGroup> readGroups;
     std::mutex entriesMutex; // Thread safety for append operations
 };
 

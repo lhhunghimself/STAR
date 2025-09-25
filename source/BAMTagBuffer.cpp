@@ -10,70 +10,47 @@
 BAMTagBuffer::BAMTagBuffer() {
     // Reserve some initial capacity to reduce reallocations
     entries.reserve(1000000); // Start with 1M entries capacity
-    readGroups.reserve(100000); // Start with 100K read groups capacity
 }
 
 BAMTagBuffer::~BAMTagBuffer() {
     clear();
 }
 
-uint32_t BAMTagBuffer::getOrCreateGroup(uint64_t iReadAll) {
-    // Ensure we have enough space in readGroups
-    if (iReadAll >= readGroups.size()) {
-        size_t newSize = readGroups.size();
-        if (newSize == 0) {
-            newSize = 1024;
-        }
-        
-        const uint64_t required = iReadAll + 1;
-        while (static_cast<uint64_t>(newSize) < required) {
-            if (newSize >= std::numeric_limits<size_t>::max() / 2) {
-                newSize = static_cast<size_t>(required);
-                break;
-            }
-            size_t doubled = newSize * 2;
-            if (doubled <= newSize) {
-                newSize = static_cast<size_t>(required);
-                break;
-            }
-            newSize = doubled;
-        }
-        
-        readGroups.resize(newSize);
-    }
-    
-    uint32_t groupIndex = static_cast<uint32_t>(iReadAll);
-    return groupIndex;
-}
-
 void BAMTagBuffer::append(const BAMRecordMeta& meta) {
     std::lock_guard<std::mutex> lock(entriesMutex);
-    size_t entryIdx = entries.size();
     
-    // Get/create read group
-    uint32_t groupIndex = getOrCreateGroup(meta.iReadAll);
+    // Guard against overflow of readId field
+    if (meta.iReadAll > UINT32_MAX) {
+        std::cerr << "ERROR: Read ID " << meta.iReadAll << " exceeds UINT32_MAX limit. "
+                  << "Dataset too large for current implementation." << std::endl;
+        exit(1);
+    }
     
-    // Create entry with reference to read group
-    BAMTagEntry entry(meta);
-    entry.groupIndex = groupIndex;
+    // Guard against overflow of alignIdx field
+    if (meta.alignIdx > UINT16_MAX) {
+        std::cerr << "ERROR: Alignment index " << meta.alignIdx << " exceeds UINT16_MAX limit. "
+                  << "Too many alignments per read." << std::endl;
+        exit(1);
+    }
+    
+    // Guard against overflow of mate field
+    if (meta.mate > UINT8_MAX) {
+        std::cerr << "ERROR: Mate value " << meta.mate << " exceeds UINT8_MAX limit." << std::endl;
+        exit(1);
+    }
+    
+    // Create compact entry
+    BAMTagEntry entry;
+    entry.recordIndex = meta.recordIndex;
+    entry.readId = static_cast<uint32_t>(meta.iReadAll);
+    entry.alignIdx = static_cast<uint16_t>(meta.alignIdx);
+    entry.mate = static_cast<uint8_t>(meta.mate);
+    entry.padding = 0;
     
     entries.push_back(entry);
-    
-    // Update read group bookkeeping
-    ReadGroup& group = readGroups[groupIndex];
-    if (group.firstEntryIdx == UINT32_MAX) {
-        group.firstEntryIdx = static_cast<uint32_t>(entryIdx);
-    }
-    group.entryCount++;
 }
 
 
-void BAMTagBuffer::reserveReadCapacity(uint64_t nReads) {
-    std::lock_guard<std::mutex> lock(entriesMutex);
-    if (nReads > readGroups.size()) {
-        readGroups.resize(nReads);
-    }
-}
 
 void BAMTagBuffer::writeTagTable(const std::string& outputPath,
                                   const std::vector<readInfoStruct>& readInfo,
@@ -98,11 +75,11 @@ void BAMTagBuffer::writeTagTable(const std::string& outputPath,
     
     // Write entries - derive CB/UB/status from readInfo
     for (const auto& entry : entries) {
-        if (entry.iReadAll >= readInfo.size()) {
+        if (entry.readId >= readInfo.size()) {
             continue; // Skip invalid entries
         }
         
-        const readInfoStruct& readData = readInfo[entry.iReadAll];
+        const readInfoStruct& readData = readInfo[entry.readId];
         
         // Derive CB from readInfo
         std::string cb = "-";
@@ -132,7 +109,7 @@ void BAMTagBuffer::writeTagTable(const std::string& outputPath,
         }
         
         outFile << entry.recordIndex << "\t"
-                << entry.iReadAll << "\t"
+                << entry.readId << "\t"
                 << entry.mate << "\t"
                 << entry.alignIdx << "\t"
                 << cb << "\t"
@@ -149,6 +126,4 @@ void BAMTagBuffer::clear() {
     std::lock_guard<std::mutex> lock(entriesMutex);
     entries.clear();
     entries.shrink_to_fit();
-    readGroups.clear();
-    readGroups.shrink_to_fit();
 }
