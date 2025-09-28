@@ -99,7 +99,8 @@ OBJECTS = systemFunctions.o funPrimaryAlignMark.o \
 	sjdbLoadFromFiles.o sjdbLoadFromStream.o sjdbPrepare.o sjdbBuildIndex.o sjdbInsertJunctions.o mapThreadsSpawn.o \
 	Parameters_readFilesInit.o Parameters_openReadsFiles.cpp Parameters_closeReadsFiles.cpp Parameters_readSAMheader.o \
 	bam_cat.o serviceFuns.o GlobalVariables.cpp \
-	BAMoutput.o BAMoutputSoloTmp.o BAMunsortedAddSoloTags.o BAMfunctions.o ReadAlign_alignBAM.o BAMbinSortByCoordinate.o signalFromBAM.o bamRemoveDuplicates.o BAMbinSortUnmapped.o
+	BAMoutput.o BAMoutputSoloTmp.o BAMunsortedAddSoloTags.o BAMfunctions.o ReadAlign_alignBAM.o BAMbinSortByCoordinate.o signalFromBAM.o bamRemoveDuplicates.o BAMbinSortUnmapped.o \
+	ZGZXTags.o
 
 SOURCES := $(wildcard *.cpp) $(wildcard *.c)
 

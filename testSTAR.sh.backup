@@ -7,15 +7,13 @@ set -euo pipefail
 
 # Configuration
 NEW_STAR_BINARY="./bin/Linux_x86_64/STAR"                     # Newly built binary in current directory
-SAMPLE_ID="SC2300771"
-BASE_DIR="/storage/downsampled/${SAMPLE_ID}"
 WHITELIST="/storage/scRNAseq_output/whitelists/737K-fixed-rna-profiling.txt"
 GENOME_DIR="/storage/scRNAseq_output/indices-98-32/star"
 THREADS=24
-OUTPUT_BASE="/storage/SC2300771_subset"
+OUTPUT_BASE="./testing"
 
-NEW_DIR="${OUTPUT_BASE}/${SAMPLE_ID}"
-TEMP_DIR="/storage/tmp/${SAMPLE_ID}"
+NEW_DIR="${OUTPUT_BASE}"
+TEMP_DIR="/storage/tmp/testing"
 
 # Parse command line arguments for extra flags
 EXTRA_FLAGS=()
@@ -41,26 +39,15 @@ cleanup_dir() {
 
 # Check requirements
 echo "=== Checking inputs/binaries ==="
-[[ -d "$BASE_DIR" ]] || { echo "ERROR: Input dir not found: $BASE_DIR"; exit 1; }
+[[ -f "./filtered_R1.fastq.gz" ]] || { echo "ERROR: R1 file not found: ./filtered_R1.fastq.gz"; exit 1; }
+[[ -f "./filtered_R2.fastq.gz" ]] || { echo "ERROR: R2 file not found: ./filtered_R2.fastq.gz"; exit 1; }
 [[ -f "$WHITELIST" ]] || { echo "ERROR: Whitelist not found: $WHITELIST"; exit 1; }
 [[ -d "$GENOME_DIR" ]] || { echo "ERROR: Genome dir not found: $GENOME_DIR"; exit 1; }
 [[ -f "$NEW_STAR_BINARY" ]] || { echo "ERROR: New STAR binary not found: $NEW_STAR_BINARY"; exit 1; }
 
-# Build R2/R1 file lists (8 lanes)
-R2_FILES=""; R1_FILES=""
-for lane in L001 L002 L003 L004 L005 L006 L007 L008; do
-    r2_glob="${BASE_DIR}/${SAMPLE_ID}_*_${lane}_R2_001.fastq.gz"
-    r1_glob="${BASE_DIR}/${SAMPLE_ID}_*_${lane}_R1_001.fastq.gz"
-    if ls $r2_glob 1>/dev/null 2>&1; then
-        [[ -n "$R2_FILES" ]] && R2_FILES+="",
-        R2_FILES+="$(ls $r2_glob)"
-    fi
-    if ls $r1_glob 1>/dev/null 2>&1; then
-        [[ -n "$R1_FILES" ]] && R1_FILES+="",
-        R1_FILES+="$(ls $r1_glob)"
-    fi
-done
-[[ -n "$R2_FILES" && -n "$R1_FILES" ]] || { echo "ERROR: Could not find R1/R2 FASTQs in $BASE_DIR"; exit 1; }
+# Set R2/R1 file paths
+R2_FILES="./filtered_R2.fastq.gz"
+R1_FILES="./filtered_R1.fastq.gz"
 
 echo "R2: $R2_FILES"
 echo "R1: $R1_FILES"
@@ -103,7 +90,6 @@ COMMON_PARAMS=(
     --soloCellFilter None
     --clipAdapterType CellRanger4
     --soloFeatures Gene GeneFull
-    --soloStrand Unstranded
     --readFilesIn "$R2_FILES" "$R1_FILES"
     --alignEndsType Local
     --readFilesCommand zcat
