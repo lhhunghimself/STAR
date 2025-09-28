@@ -55,7 +55,7 @@ void ParametersSolo::initialize(Parameters *pPin)
         writeTagTablePath = "";
     } else if (writeTagTableLower == "default") {
         writeTagTableEnabled = true;
-        writeTagTablePath = pP->outFileNamePrefix + "Aligned.out.cb_ub.tsv";
+        writeTagTablePath = pP->outFileNamePrefix + "Aligned.out.cb_ub.bin";
         bamTagBuffer = new BAMTagBuffer();
     } else {
         writeTagTableEnabled = true;

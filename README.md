@@ -92,6 +92,40 @@ make CXXFLAGSextra=-march=native
 make LDFLAGSextra=-flto CXXFLAGSextra="-flto -march=native"
 ```
 
+MEMORY TESTING
+===============
+
+For memory safety testing of STAR's tag table functionality using AddressSanitizer:
+
+**Quick Start:**
+```bash
+# Build with AddressSanitizer
+cd source
+ASAN=1 make clean
+ASAN=1 make STAR
+
+# Run memory test
+cd ..
+ASAN_OPTIONS="detect_leaks=1" ./mem_test_tags.sh
+```
+
+**Documentation:**
+- `docs/memory_testing_guide.md` - Complete testing guide
+- `docs/debug_instrumentation.md` - Debug logging and validation
+- `MEMORY_TESTING.md` - Quick reference
+- `asan_findings.md` - Example analysis report
+
+**Debug Mode:**
+```bash
+# Enable debug logging and validation
+STAR_DEBUG_TAG=1 ./source/STAR [options]
+
+# Or use the debug-enabled production script
+./runSTAR_debug.sh  # Comprehensive debug run with monitoring
+```
+
+**Note:** ASan builds require ~3x more RAM and run 2-5x slower than production builds.
+
 FreeBSD ports
 =============
 

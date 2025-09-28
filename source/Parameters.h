@@ -173,6 +173,7 @@ class Parameters {
         int outBAMcompression;
         vector <string> outSAMtype;
         bool outBAMunsorted, outBAMcoord, outSAMbool;
+        bool outBAMunsortedUseSoloTmp; // whether to use solo tmp file for unsorted BAM output
         uint32 outBAMcoordNbins;
         uint32 outBAMsortingBinsN;//user-defined number of bins for sorting
         string outBAMsortTmpDir;

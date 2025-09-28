@@ -1,0 +1,9 @@
+Number of Reads,20000
+Reads With Valid Barcodes,0.95445
+Sequencing Saturation,0.0131658
+Q30 Bases in CB+UMI,0.923552
+Q30 Bases in RNA read,0.630991
+Reads Mapped to Genome: Unique+Multiple,0.99825
+Reads Mapped to Genome: Unique,0
+Reads Mapped to Gene: Unique+Multiple Gene,NoMulti
+Reads Mapped to Gene: Unique Gene,0.25065

@@ -1,0 +1,39 @@
+STAR version=2.7.11b
+STAR compilation time,server,dir=2025-09-28T02:37:40+00:00 :/mnt/pikachu/STAR/source
+STAR git: On branch debug_bam ; commit 1d32d563f33ad8e7d89b33e28cc4927080b91cda ; diff files: runSTAR.sh 
+##### Command Line:
+./bin/Linux_x86_64/STAR --runMode alignReads --outSAMtype BAM Unsorted --outSAMattributes CB UB --soloType CB_UMI_Simple --soloCBwhitelist /dev/null --soloAddTagsToUnsorted yes --genomeDir /dev/null --readFilesIn /dev/null /dev/null
+##### Initial USER parameters from Command Line:
+###### All USER parameters from Command Line:
+runMode                       alignReads        ~RE-DEFINED
+outSAMtype                    BAM   Unsorted        ~RE-DEFINED
+outSAMattributes              CB   UB        ~RE-DEFINED
+soloType                      CB_UMI_Simple     ~RE-DEFINED
+soloCBwhitelist               /dev/null        ~RE-DEFINED
+soloAddTagsToUnsorted         yes     ~RE-DEFINED
+genomeDir                     /dev/null     ~RE-DEFINED
+readFilesIn                   /dev/null   /dev/null        ~RE-DEFINED
+##### Finished reading parameters from all sources
+
+##### Final user re-defined parameters-----------------:
+runMode                           alignReads   
+genomeDir                         /dev/null
+readFilesIn                       /dev/null   /dev/null   
+outSAMtype                        BAM   Unsorted   
+outSAMattributes                  CB   UB   
+soloType                          CB_UMI_Simple
+soloCBwhitelist                   /dev/null   
+soloAddTagsToUnsorted             yes
+
+-------------------------------
+##### Final effective command line:
+./bin/Linux_x86_64/STAR   --runMode alignReads      --genomeDir /dev/null   --readFilesIn /dev/null   /dev/null      --outSAMtype BAM   Unsorted      --outSAMattributes CB   UB      --soloType CB_UMI_Simple   --soloCBwhitelist /dev/null      --soloAddTagsToUnsorted yes
+----------------------------------------
+
+Number of fastq files for each mate = 1
+ParametersSolo: --soloCellFilterType CellRanger2.2 filtering parameters:  3000 0.99 10
+
+EXITING because of FATAL ERROR: CB whitelist file /dev/null is empty. 
+SOLUTION: provide non-empty whitelist.
+
+Sep 28 02:49:50 ...... FATAL ERROR, exiting

@@ -41,7 +41,7 @@ ReadAlignChunk::ReadAlignChunk(Parameters& Pin, Genome &genomeIn, Transcriptome 
     };
 
     if (P.outBAMunsorted) {
-        if (P.pSolo.addTagsToUnsorted) {
+        if (P.outBAMunsortedUseSoloTmp) {
             // Two-pass mode: use solo tmp writer with shared stream
             if (P.pSolo.writeTagTableEnabled) {
                 chunkOutBAMsoloTmp = new BAMoutputSoloTmp(&P.inOut->outBAMfileUnsortedSoloTmp, P, P.pSolo.bamTagBuffer);

@@ -262,7 +262,14 @@ int main(int argInN, char *argIn[])
     soloMain.processAndOutput();
 
     // Two-pass unsorted CB/UB tag injection - Pass 2
-    if (P.pSolo.addTagsToUnsorted && P.outBAMfileUnsortedSoloTmpName != "") {
+    if (P.outBAMunsortedUseSoloTmp) {
+        // Assertion: tmp filename should be set when using solo tmp mode
+        if (P.outBAMfileUnsortedSoloTmpName == "") {
+            ostringstream errOut;
+            errOut << "EXITING because of fatal INTERNAL ERROR: outBAMunsortedUseSoloTmp is true but outBAMfileUnsortedSoloTmpName is empty\n";
+            errOut << "SOLUTION: this is a programming error, please report this bug\n";
+            exitWithError(errOut.str(), std::cerr, P.inOut->logMain, EXIT_CODE_PARAMETER, P);
+        }
         P.inOut->logMain << timeMonthDayTime() << " ..... starting pass 2: adding CB/UB tags to unsorted BAM\n" << flush;
         
         try {

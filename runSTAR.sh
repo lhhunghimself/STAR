@@ -6,13 +6,13 @@
 set -euo pipefail
 
 # Configuration
-NEW_STAR_BINARY="./STAR"                     # Newly built binary in current directory
+NEW_STAR_BINARY="/usr/local/bin/STAR_fork"                     # Newly built binary in current directory
 SAMPLE_ID="SC2300771"
-BASE_DIR="/storage/JAX_sequences/${SAMPLE_ID}"
+BASE_DIR="/storage/downsampled/${SAMPLE_ID}"
 WHITELIST="/storage/scRNAseq_output/whitelists/737K-fixed-rna-profiling.txt"
 GENOME_DIR="/storage/scRNAseq_output/indices-98-32/star"
 THREADS=24
-OUTPUT_BASE="/storage/Alignments"
+OUTPUT_BASE="/storage/SC2300771_subset"
 
 NEW_DIR="${OUTPUT_BASE}/${SAMPLE_ID}"
 TEMP_DIR="/storage/tmp/${SAMPLE_ID}"
@@ -62,23 +62,24 @@ echo "R1: $R1_FILES"
 COMMON_PARAMS=(
     --runThreadN $THREADS
     --outTmpDir $TEMP_DIR
+    --quantMode GeneCounts
     --soloType CB_UMI_Simple
     --soloCBlen 16
     --soloUMIlen 12
     --soloUMIstart 17
     --soloCBstart 1
-    --soloBarcodeReadLength 0
     --soloCBwhitelist "$WHITELIST"
     --genomeDir "$GENOME_DIR"
     --limitIObufferSize 50000000 50000000
     --outSJtype None
     --outBAMcompression 6
-    --soloMultiMappers Unique
+    --soloMultiMappers Rescue
     --alignIntronMax 1
     --alignMatesGapMax 0
     --outFilterMismatchNmax 6
     --outFilterMismatchNoverReadLmax 1.0
     --outFilterMatchNmin 25
+    --soloBarcodeReadLength 0
     --outSAMunmapped None
     --outFilterMatchNminOverLread 0
     --outFilterMultimapNmax 10000
@@ -88,7 +89,7 @@ COMMON_PARAMS=(
     --outSAMprimaryFlag AllBestScore
     --outFilterScoreMin 0
     --outFilterScoreMinOverLread 0
-    --outSAMattributes NH HI AS nM NM CR CY UR UY GX GN
+    --outSAMattributes NH HI AS nM NM CR CY UR UY GX GN gx gn
     --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts
     --soloUMIfiltering MultiGeneUMI_CR
     --soloUMIdedup 1MM_CR
@@ -103,6 +104,7 @@ COMMON_PARAMS=(
 NEW_TAG_TABLE_PARAMS=(
     "${COMMON_PARAMS[@]}"
     --outSAMtype BAM Unsorted
+    --soloAddTagsToUnsorted yes
     --soloWriteTagTable Default
 )
 
@@ -110,8 +112,11 @@ NEW_TAG_TABLE_PARAMS=(
 cleanup_dir "$NEW_DIR"
 
 echo "=== Running new STAR with CB/UB tag table export ==="
-$NEW_STAR_BINARY \
+echo "$NEW_STAR_BINARY \
     "${NEW_TAG_TABLE_PARAMS[@]}" \
-    --outFileNamePrefix "${NEW_DIR}/"
+    --outFileNamePrefix ${NEW_DIR}/"
+eval  "$NEW_STAR_BINARY \
+    "${NEW_TAG_TABLE_PARAMS[@]}" \
+    --outFileNamePrefix ${NEW_DIR}/"
 
 echo "Run finished"

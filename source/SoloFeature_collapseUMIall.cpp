@@ -665,7 +665,7 @@ uint32 SoloFeature::umiArrayCorrect_Directional(const uint32 nU0, uintUMI *umiAr
 
 void SoloFeature::finalizeTagTableFromReadInfo() {
     // This method is called after collapseUMIall() has finalized all CB/UB values
-    // No longer needs to call finalizeTag - the writeTagTable method will derive
+    // No longer needs to call finalizeTag - the writeTagBinary method will derive
     // CB/UB/status directly from readInfo when needed
 };
 

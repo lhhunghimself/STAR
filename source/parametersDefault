@@ -921,7 +921,7 @@ soloAddTagsToUnsorted       no
 soloWriteTagTable           None
     string:                 export corrected CB/UB assignments to a sidecar table instead of or in addition to patching BAM
                             None        ... disable sidecar table export (default)
-                            Default     ... write to <outFileNamePrefix>Aligned.out.cb_ub.tsv
+                            Default     ... write to <outFileNamePrefix>Aligned.out.cb_ub.bin
                             <path>      ... write to specified file path
 
 #####UnderDevelopment_begin : not supported - do not use

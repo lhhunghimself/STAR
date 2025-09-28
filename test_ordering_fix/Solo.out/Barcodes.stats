@@ -1,0 +1,12 @@
+                                       noNoAdapter              0
+                                           noNoUMI              0
+                                            noNoCB              0
+                                           noNinCB              0
+                                          noNinUMI              0
+                                  noUMIhomopolymer              1
+                                       noNoWLmatch            802
+                                       noTooManyMM              0
+                                noTooManyWLmatches              0
+                                   yesWLmatchExact          15056
+                               yesOneWLmatchWithMM           3284
+                              yesMultWLmatchWithMM            857

@@ -1,0 +1,10 @@
+=== Checking inputs/binaries ===
+R2: /storage/JAX_sequences/SC2300772/SC2300772_GT24-00693_TTGGCGGCAC-AGTAACTTAC_S6_L002_R2_001.fastq.gz
+R1: /storage/JAX_sequences/SC2300772/SC2300772_GT24-00693_TTGGCGGCAC-AGTAACTTAC_S6_L002_R1_001.fastq.gz
+Cleaning up: /storage/Alignments/SC2300772
+=== Running new STAR with CB/UB tag table export ===
+	./STAR --runThreadN 24 --outTmpDir /storage/tmp/SC2300772 --soloType CB_UMI_Simple --soloCBlen 16 --soloUMIlen 12 --soloUMIstart 17 --soloCBstart 1 --soloBarcodeReadLength 0 --soloCBwhitelist /storage/scRNAseq_output/whitelists/737K-fixed-rna-profiling.txt --genomeDir /storage/scRNAseq_output/indices-98-32/star --limitIObufferSize 50000000 50000000 --outSJtype None --outBAMcompression 6 --soloMultiMappers Unique --alignIntronMax 1 --alignMatesGapMax 0 --outFilterMismatchNmax 6 --outFilterMismatchNoverReadLmax 1.0 --outFilterMatchNmin 25 --outSAMunmapped None --outFilterMatchNminOverLread 0 --outFilterMultimapNmax 10000 --outFilterMultimapScoreRange 1 --outSAMmultNmax 10000 --winAnchorMultimapNmax 200 --outSAMprimaryFlag AllBestScore --outFilterScoreMin 0 --outFilterScoreMinOverLread 0 --outSAMattributes NH HI AS nM NM CR CY UR UY GX GN --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR --soloUMIdedup 1MM_CR --soloCellFilter None --clipAdapterType CellRanger4 --soloFeatures Gene --readFilesIn /storage/JAX_sequences/SC2300772/SC2300772_GT24-00693_TTGGCGGCAC-AGTAACTTAC_S6_L002_R2_001.fastq.gz /storage/JAX_sequences/SC2300772/SC2300772_GT24-00693_TTGGCGGCAC-AGTAACTTAC_S6_L002_R1_001.fastq.gz --alignEndsType Local --readFilesCommand zcat --outSAMtype BAM Unsorted --soloWriteTagTable Default --outFileNamePrefix /storage/Alignments/SC2300772/
+	STAR version: 2.7.11b   compiled: 2025-09-25T16:14:59+00:00 :/mnt/pikachu/STAR/source
+Sep 26 00:52:04 ..... started STAR run
+Sep 26 00:52:04 ..... loading genome
+Sep 26 00:52:16 ..... started mapping

@@ -611,6 +611,7 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
 
     outSAMbool=false;
     outBAMunsorted=false;
+    outBAMunsortedUseSoloTmp=false;
     outBAMcoord=false;
     if (runMode=="alignReads" && outSAMmode != "None") {//open SAM file and write header
         if (outSAMtype.at(0)=="BAM") {
@@ -965,10 +966,14 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
     
     // Open BAM files after Solo initialization (so pSolo.addTagsToUnsorted is available)
     if (outBAMunsorted) {
-        if (pSolo.addTagsToUnsorted) {
+        // Decide the write mode once, immediately after Solo init
+        bool useSoloTmp = pSolo.addTagsToUnsorted && pSolo.samAttrYes;
+        outBAMunsortedUseSoloTmp = useSoloTmp;
+        
+        if (useSoloTmp) {
             // Two-pass mode: create temp file, skip opening final BAM for now
             outBAMfileUnsortedSoloTmpName = outFileNamePrefix + "Aligned.out.unsorted.solo.tmp";
-            inOut->logMain << "DEBUG: Opening solo tmp file: " << outBAMfileUnsortedSoloTmpName << std::endl;
+            inOut->logMain << "DEBUG: Using solo tmp mode for unsorted BAM (CB/UB tags requested)" << std::endl;
             // Open shared tmp stream once
             inOut->outBAMfileUnsortedSoloTmp.open(outBAMfileUnsortedSoloTmpName.c_str(), ios::binary | ios::out | ios::trunc);
             if (!inOut->outBAMfileUnsortedSoloTmp.is_open()) {
@@ -977,12 +982,19 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
                 errOut << "SOLUTION: check the path and permissions\n";
                 exitWithError(errOut.str(), std::cerr, inOut->logMain, EXIT_CODE_PARAMETER, *this);
             }
-            inOut->logMain << "DEBUG: Solo tmp file opened successfully" << std::endl;
             // Final BAM will be opened in pass 2
             inOut->outBAMfileUnsorted = NULL;
         } else {
-            // Legacy mode: open final BAM directly
+            // Direct mode: open final BAM directly, clear tmp filename
+            outBAMfileUnsortedSoloTmpName = "";
+            inOut->logMain << "DEBUG: Using direct mode for unsorted BAM (no CB/UB tags or not requested)" << std::endl;
             inOut->outBAMfileUnsorted = bgzf_open(outBAMfileUnsortedName.c_str(),("w"+to_string((long long) outBAMcompression)).c_str());
+            if (inOut->outBAMfileUnsorted == NULL) {
+                ostringstream errOut;
+                errOut << "EXITING because of fatal OUTPUT ERROR: could not create unsorted BAM file: " << outBAMfileUnsortedName << "\n";
+                errOut << "SOLUTION: check the path and permissions\n";
+                exitWithError(errOut.str(), std::cerr, inOut->logMain, EXIT_CODE_PARAMETER, *this);
+            }
         }
     }
     

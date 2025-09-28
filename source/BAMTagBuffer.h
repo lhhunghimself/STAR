@@ -10,16 +10,12 @@
 #include <cstdint>
 
 struct BAMTagEntry {
-    uint64_t recordIndex;
-    uint32_t readId;    // replaces iReadAll, stores iReadAll cast to 32-bit
-    uint16_t alignIdx;
-    uint8_t  mate;
-    uint8_t  padding;   // for alignment, set to 0
+    uint32_t recordIndex; // BAM record index for ordering
+    uint32_t readId;      // iReadAll truncated to 32 bits
     
-    BAMTagEntry() : recordIndex(0), readId(0), alignIdx(0), mate(0), padding(0) {}
+    BAMTagEntry() : recordIndex(0), readId(0) {}
     BAMTagEntry(const BAMRecordMeta& meta) 
-        : recordIndex(meta.recordIndex), readId(static_cast<uint32_t>(meta.iReadAll))
-        , alignIdx(static_cast<uint16_t>(meta.alignIdx)), mate(static_cast<uint8_t>(meta.mate)), padding(0) {}
+        : recordIndex(static_cast<uint32_t>(meta.recordIndex)), readId(static_cast<uint32_t>(meta.iReadAll)) {}
 };
 
 class BAMTagBuffer {
@@ -30,11 +26,11 @@ public:
     // Thread-safe append of alignment metadata
     void append(const BAMRecordMeta& meta);
     
-    // Write tag table to file (called at end of processing)
-    void writeTagTable(const std::string& outputPath,
-                       const std::vector<readInfoStruct>& readInfo,
-                       const std::vector<std::string>& cbWLstr,
-                       size_t umiLength);
+    // Write binary tag stream to file (called at end of processing)
+    void writeTagBinary(const std::string& outputPath,
+                        const std::vector<readInfoStruct>& readInfo,
+                        uint64_t cbBits,
+                        uint64_t umiBits);
     
     // Clear buffer to free memory
     void clear();
