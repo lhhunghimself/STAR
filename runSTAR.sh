@@ -2,6 +2,62 @@
 
 # Run STAR with CB/UB tag table export
 # Based on production parameters from SC2300771
+#
+# =============================================================================
+# ZG/ZX BAM Tags Documentation
+# =============================================================================
+#
+# This script includes support for custom ZG (gene set) and ZX (overlap status) 
+# BAM tags that provide detailed gene annotation information for each read.
+#
+# ZG Tag (Gene Set):
+# ------------------
+# - Format: ZG:Z:<gene_list> where <gene_list> is comma-separated Ensembl gene IDs
+# - Example: ZG:Z:ENSG00000103024,ENSG00000171824
+# - Empty value: ZG:Z:- (when no genes overlap the read)
+# - Contains all genes that overlap with the read based on genomic coordinates
+# - Uses GeneFull annotation mode for comprehensive gene detection
+#
+# ZX Tag (Overlap Status):
+# ------------------------
+# - Format: ZX:Z:<overlap_type> where <overlap_type> describes the genomic context
+# - Valid values:
+#   * "none"      - Read doesn't overlap any annotated features (intergenic)
+#   * "exonic"    - Read overlaps with exonic regions (includes antisense)
+#   * "intronic"  - Read overlaps with intronic regions (includes antisense)  
+#   * "spanning"  - Read spans multiple feature types or unknown overlap
+# - Provides genomic context information for downstream analysis
+#
+# Implementation Details:
+# -----------------------
+# - ZG/ZX tags are BAM-only (not emitted in SAM output due to complexity)
+# - Requires --soloFeatures to include "GeneFull" for proper gene detection
+# - Recommends --soloStrand Unstranded to avoid strand specificity issues
+# - Tags are populated using existing STAR gene annotation infrastructure
+# - Minimal performance impact as they reuse existing annotation data structures
+#
+# Usage Requirements:
+# -------------------
+# 1. Add "ZG ZX" to --outSAMattributes parameter (already included below)
+# 2. Ensure --soloFeatures includes "GeneFull" (already configured)
+# 3. Use BAM output format (--outSAMtype BAM)
+# 4. Gene annotation must be available in genome index
+#
+# Example Output:
+# ---------------
+# Read mapping to NME3 gene:     ZG:Z:ENSG00000103024  ZX:Z:exonic
+# Read mapping to EXOSC10 gene:  ZG:Z:ENSG00000171824  ZX:Z:intronic  
+# Read with no gene overlap:     ZG:Z:-                ZX:Z:none
+# Read mapping multiple genes:   ZG:Z:ENSG00001,ENSG00002  ZX:Z:exonic
+#
+# Troubleshooting:
+# ----------------
+# - Empty ZG tags (ZG:Z:-): Check gene annotation coverage and strand settings
+# - Missing ZG/ZX tags: Ensure "ZG ZX" is in --outSAMattributes
+# - Compilation errors: Run 'make clean && make' to rebuild with ZG/ZX support
+#
+# For validation, use: python3 validate_zg_zx.py output.bam allowed_genes.txt
+# =============================================================================
 
 set -euo pipefail
 
@@ -66,6 +122,11 @@ echo "R2: $R2_FILES"
 echo "R1: $R1_FILES"
 
 # Common STAR params
+# Note: ZG/ZX BAM tags are configured via the following parameters:
+# - --outSAMattributes includes "ZG ZX" for gene set and overlap status tags
+# - --soloFeatures includes "GeneFull" for comprehensive gene annotation
+# - --soloStrand Unstranded recommended to avoid strand specificity issues
+# - --outSAMtype BAM required (ZG/ZX are BAM-only tags)
 COMMON_PARAMS=(
     --runThreadN $THREADS
     --outTmpDir $TEMP_DIR
@@ -96,14 +157,14 @@ COMMON_PARAMS=(
     --outSAMprimaryFlag AllBestScore
     --outFilterScoreMin 0
     --outFilterScoreMinOverLread 0
-    --outSAMattributes NH HI AS nM NM CR CY UR UY GX GN gx gn ZG ZX
+    --outSAMattributes NH HI AS nM NM CR CY UR UY GX GN gx gn ZG ZX  # ZG=gene_set, ZX=overlap_status
     --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts
     --soloUMIfiltering MultiGeneUMI_CR
     --soloUMIdedup 1MM_CR
     --soloCellFilter None
     --clipAdapterType CellRanger4
-    --soloFeatures Gene GeneFull
-    --soloStrand Unstranded
+    --soloFeatures Gene GeneFull                                     # GeneFull required for ZG/ZX tags
+    --soloStrand Unstranded                                          # Recommended for ZG/ZX tags
     --readFilesIn "$R2_FILES" "$R1_FILES"
     --alignEndsType Local
     --readFilesCommand zcat
@@ -132,3 +193,25 @@ eval  "$NEW_STAR_BINARY \
     --outFileNamePrefix ${NEW_DIR}/"
 
 echo "Run finished"
+
+# =============================================================================
+# ZG/ZX Output Interpretation Guide
+# =============================================================================
+#
+# After STAR completes, the output BAM file will contain ZG and ZX tags for each read.
+# Use samtools or other BAM processing tools to examine the tags:
+#
+# Example commands to inspect ZG/ZX tags:
+# samtools view output.bam | grep -E "ZG:Z:|ZX:Z:" | head -10
+# samtools view output.bam | awk '{for(i=1;i<=NF;i++) if($i~/^ZG:Z:/ || $i~/^ZX:Z:/) print $1"\t"$i}' | head -10
+#
+# Interpretation examples:
+# - ZG:Z:ENSG00000103024 ZX:Z:exonic    → Read maps to NME3 gene, overlaps exonic region
+# - ZG:Z:- ZX:Z:none                    → Read doesn't overlap any annotated genes
+# - ZG:Z:ENSG00001,ENSG00002 ZX:Z:exonic → Read overlaps multiple genes in exonic regions
+#
+# For downstream analysis:
+# - Use ZG tags to identify gene-specific reads for expression quantification
+# - Use ZX tags to filter reads by genomic context (exonic vs intronic vs intergenic)
+# - Combine with existing tags (GX, GN) for comprehensive gene annotation analysis
+# =============================================================================
